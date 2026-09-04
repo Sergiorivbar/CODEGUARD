@@ -21,7 +21,7 @@ import sys
 import requests
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 MAX_DIFF_CHARS = 12000
 REQUEST_TIMEOUT = 60
 
