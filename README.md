@@ -5,6 +5,9 @@ en GitHub Actions. En cada PR, un modelo de lenguaje analiza el diff y
 publica un comentario automático con un resumen del cambio, posibles bugs
 y sugerencias de estilo — sin depender de ningún servicio de pago.
 
+**🌐 Landing page:** [codeguard-sergiorivbar.vercel.app](https://codeguard-sergiorivbar.vercel.app)
+**🔍 PR de demo con la revisión real del bot:** [#1](https://github.com/Sergiorivbar/CODEGUARD/pull/1)
+
 ## ¿Por qué este proyecto?
 
 Es un ejemplo de integración real de IA en un flujo de CI/CD: nada de
@@ -57,6 +60,8 @@ salida 1, sin dejar el job en un estado ambiguo.
 ├── .github/workflows/pr-review.yml   # Workflow que dispara la revisión en cada PR
 ├── scripts/review_pr.py              # Lógica: obtener diff, llamar a Groq, comentar en la PR
 ├── tests/test_review_pr.py           # Tests locales (mockean las llamadas HTTP)
+├── examples/stats.py                 # Módulo de ejemplo usado para probar el bot en una PR real
+├── site/                             # Landing page estática (desplegada en Vercel)
 ├── requirements.txt                  # Única dependencia: requests
 └── .gitignore
 ```

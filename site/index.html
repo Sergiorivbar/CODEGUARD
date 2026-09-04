@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CodeGuard — AI code review bot for Pull Requests</title>
+<meta name="description" content="Bot de revisión de código con IA para Pull Requests, integrado en GitHub Actions con la API gratuita de Groq. Sin servicios de pago." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🛡️</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e14;
+    --bg-elevated:#10151d;
+    --bg-card:#131a24;
+    --border:#22303f;
+    --border-hover:#2f4356;
+    --text:#e6edf3;
+    --text-dim:#8b98a8;
+    --text-faint:#5c6b7a;
+    --accent:#3ddc97;
+    --accent-dim:#2ba876;
+    --accent-glow:rgba(61,220,151,0.15);
+    --danger:#f2777a;
+    --warn:#e5c07b;
+    --blue:#6fb1ff;
+    --radius:14px;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(61,220,151,0.08), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(111,177,255,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  img{max-width:100%;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+  /* NAV */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(12px);
+    background:rgba(10,14,20,0.75);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-inner{
+    max-width:1080px;margin:0 auto;padding:16px 24px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-0.01em;text-decoration:none;}
+  .brand-mark{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),#1f9d6a);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+    box-shadow:0 0 0 1px rgba(61,220,151,0.35), 0 4px 14px rgba(61,220,151,0.25);
+  }
+  .nav-links{display:flex;gap:28px;align-items:center;}
+  .nav-links a{font-size:14px;color:var(--text-dim);text-decoration:none;transition:color .15s;}
+  .nav-links a:hover{color:var(--text);}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 16px;border-radius:9px;font-size:14px;font-weight:600;
+    text-decoration:none;border:1px solid var(--border);
+    transition:all .15s ease;white-space:nowrap;
+  }
+  .btn-primary{background:var(--accent);color:#04140d;border-color:var(--accent);}
+  .btn-primary:hover{background:#4fe6a6;box-shadow:0 0 24px var(--accent-glow);}
+  .btn-ghost{background:transparent;color:var(--text);}
+  .btn-ghost:hover{border-color:var(--border-hover);background:var(--bg-elevated);}
+
+  /* HERO */
+  .hero{padding:96px 0 64px;text-align:center;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:12.5px;color:var(--accent);
+    background:rgba(61,220,151,0.08);border:1px solid rgba(61,220,151,0.25);
+    padding:6px 14px;border-radius:100px;margin-bottom:28px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  h1{
+    font-size:clamp(36px,6vw,60px);font-weight:800;letter-spacing:-0.03em;
+    margin:0 0 20px;line-height:1.08;
+  }
+  h1 span{
+    background:linear-gradient(135deg,var(--accent),var(--blue));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .subtitle{
+    font-size:19px;color:var(--text-dim);max-width:640px;margin:0 auto 40px;
+    font-weight:400;
+  }
+  .subtitle b{color:var(--text);font-weight:600;}
+  .hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:56px;}
+  .hero-ctas .btn{padding:12px 22px;font-size:15px;}
+
+  .stat-row{
+    display:flex;justify-content:center;gap:48px;flex-wrap:wrap;
+    padding-top:40px;border-top:1px solid var(--border);
+  }
+  .stat{text-align:center;}
+  .stat b{display:block;font-size:26px;font-weight:800;color:var(--text);font-family:var(--mono);}
+  .stat span{font-size:13px;color:var(--text-faint);}
+
+  /* SECTIONS */
+  section{padding:88px 0;}
+  .section-head{text-align:center;max-width:640px;margin:0 auto 56px;}
+  .section-tag{font-family:var(--mono);font-size:12.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;}
+  h2{font-size:clamp(28px,4vw,38px);font-weight:800;letter-spacing:-0.02em;margin:10px 0 14px;}
+  .section-desc{color:var(--text-dim);font-size:16px;}
+
+  /* HOW IT WORKS */
+  .steps{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:step;
+  }
+  .step{
+    background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:24px 20px;position:relative;transition:border-color .2s, transform .2s;
+  }
+  .step:hover{border-color:var(--border-hover);transform:translateY(-2px);}
+  .step-num{
+    font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;
+    margin-bottom:14px;display:block;
+  }
+  .step h3{font-size:16px;margin:0 0 8px;font-weight:700;}
+  .step p{font-size:13.5px;color:var(--text-dim);margin:0;}
+  .step-arrow{
+    display:none;
+  }
+
+  /* PROOF / TERMINAL CARD */
+  .proof-card{
+    background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .proof-topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg-elevated);
+  }
+  .proof-topbar-left{display:flex;align-items:center;gap:10px;}
+  .traffic{display:flex;gap:7px;}
+  .traffic span{width:11px;height:11px;border-radius:50%;display:block;}
+  .traffic span:nth-child(1){background:#ff5f57;}
+  .traffic span:nth-child(2){background:#febc2e;}
+  .traffic span:nth-child(3){background:#28c840;}
+  .proof-title{font-family:var(--mono);font-size:12.5px;color:var(--text-dim);}
+  .pr-link{font-family:var(--mono);font-size:12.5px;color:var(--accent);text-decoration:none;}
+  .pr-link:hover{text-decoration:underline;}
+
+  .comment{padding:24px 28px;}
+  .comment-author{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .comment-avatar{
+    width:34px;height:34px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),#1f9d6a);
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+  }
+  .comment-author b{font-size:14.5px;}
+  .comment-author .bot-tag{
+    font-size:10.5px;font-family:var(--mono);color:var(--text-faint);
+    border:1px solid var(--border);padding:1px 7px;border-radius:5px;margin-left:6px;
+  }
+  .comment-author .when{font-size:13px;color:var(--text-faint);margin-left:auto;font-family:var(--mono);}
+  .comment-body{font-size:14.5px;color:#c8d3de;}
+  .comment-body h4{font-size:14.5px;color:var(--text);margin:20px 0 8px;font-weight:700;}
+  .comment-body h4:first-child{margin-top:0;}
+  .comment-body ul{margin:0 0 4px;padding-left:20px;}
+  .comment-body li{margin-bottom:8px;}
+  .comment-body code{
+    font-family:var(--mono);font-size:12.8px;background:rgba(110,130,150,0.14);
+    padding:1px 6px;border-radius:4px;color:#ffcb8a;
+  }
+  .badge-ok{
+    display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-family:var(--mono);
+    color:var(--accent);background:rgba(61,220,151,0.08);border:1px solid rgba(61,220,151,0.25);
+    padding:4px 10px;border-radius:7px;margin-bottom:16px;
+  }
+  .comment-footer{
+    margin-top:20px;padding-top:16px;border-top:1px solid var(--border);
+    font-size:12px;color:var(--text-faint);font-family:var(--mono);
+  }
+
+  /* STACK */
+  .stack-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .stack-item{
+    background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+    padding:20px;text-align:center;transition:border-color .2s, transform .2s;
+  }
+  .stack-item:hover{border-color:var(--border-hover);transform:translateY(-2px);}
+  .stack-item .ic{font-size:26px;margin-bottom:10px;}
+  .stack-item b{display:block;font-size:14.5px;margin-bottom:4px;}
+  .stack-item span{font-size:12px;color:var(--text-faint);}
+
+  /* SETUP */
+  .setup-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;}
+  .setup-list{list-style:none;margin:0;padding:0;}
+  .setup-list li{
+    display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--border);
+  }
+  .setup-list li:last-child{border-bottom:none;}
+  .setup-num{
+    width:26px;height:26px;border-radius:7px;background:var(--bg-elevated);
+    border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:12px;color:var(--accent);flex-shrink:0;font-weight:700;
+  }
+  .setup-list p{margin:0;font-size:14.5px;color:var(--text-dim);}
+  .setup-list b{color:var(--text);}
+  .code-block{
+    background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 22px;font-family:var(--mono);font-size:13px;line-height:1.75;
+    color:#a9b7c6;overflow-x:auto;
+  }
+  .code-block .c1{color:var(--text-faint);}
+  .code-block .c2{color:var(--accent);}
+  .code-block .c3{color:var(--blue);}
+  .code-block .c4{color:#ffcb8a;}
+
+  /* CTA */
+  .cta-band{
+    text-align:center;padding:72px 24px;border-radius:20px;
+    background:linear-gradient(135deg, rgba(61,220,151,0.08), rgba(111,177,255,0.05));
+    border:1px solid rgba(61,220,151,0.2);
+    max-width:1080px;margin:0 auto;
+  }
+  .cta-band h2{margin-top:0;}
+
+  footer{padding:48px 0 64px;border-top:1px solid var(--border);margin-top:40px;}
+  .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+  .footer-inner .brand{font-size:15px;}
+  .footer-links{display:flex;gap:24px;}
+  .footer-links a{font-size:13.5px;color:var(--text-dim);text-decoration:none;}
+  .footer-links a:hover{color:var(--text);}
+  .footer-note{font-size:12.5px;color:var(--text-faint);margin-top:6px;}
+
+  @media(max-width:860px){
+    .steps{grid-template-columns:1fr 1fr;}
+    .stack-grid{grid-template-columns:1fr 1fr;}
+    .setup-grid{grid-template-columns:1fr;}
+    .nav-links{display:none;}
+  }
+  @media(max-width:520px){
+    .steps{grid-template-columns:1fr;}
+    .stack-grid{grid-template-columns:1fr;}
+    .stat-row{gap:28px;}
+    .comment{padding:20px 16px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="#top" class="brand">
+      <span class="brand-mark">🛡️</span> CodeGuard
+    </a>
+    <nav class="nav-links">
+      <a href="#how">Cómo funciona</a>
+      <a href="#proof">Prueba en vivo</a>
+      <a href="#stack">Stack</a>
+      <a href="#setup">Setup</a>
+    </nav>
+    <a class="btn btn-ghost" href="https://github.com/Sergiorivbar/CODEGUARD" target="_blank" rel="noopener">
+      ★ GitHub
+    </a>
+  </div>
+</header>
+
+<div class="wrap" id="top">
+  <section class="hero">
+    <div class="eyebrow"><span class="dot"></span> 100% gratuito · sin servicios de pago</div>
+    <h1>Revisión de código con IA,<br><span>directamente en tus Pull Requests</span></h1>
+    <p class="subtitle">
+      CodeGuard analiza el diff de cada PR con un LLM y publica un comentario
+      automático — resumen, bugs y sugerencias — corriendo <b>enteramente en GitHub
+      Actions</b>, sin backend propio ni tarjetas de crédito.
+    </p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="https://github.com/Sergiorivbar/CODEGUARD" target="_blank" rel="noopener">Ver el código →</a>
+      <a class="btn btn-ghost" href="#proof">Ver revisión real en una PR</a>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><b>$0</b><span>coste de infraestructura</span></div>
+      <div class="stat"><b>~10s</b><span>en publicar el review</span></div>
+      <div class="stat"><b>1</b><span>dependencia externa (requests)</span></div>
+      <div class="stat"><b>100%</b><span>Python + GitHub Actions</span></div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap" id="how">
+  <section>
+    <div class="section-head">
+      <span class="section-tag">Pipeline</span>
+      <h2>De un push a un comentario, en 4 pasos</h2>
+      <p class="section-desc">Integración real de IA en un flujo de CI/CD, no un simple wrapper de un prompt.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <h3>PR abierta o actualizada</h3>
+        <p>GitHub Actions dispara el workflow automáticamente en cada <code style="font-family:var(--mono);font-size:12px;">opened</code> / <code style="font-family:var(--mono);font-size:12px;">synchronize</code>.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <h3>Se obtiene el diff</h3>
+        <p>El script pide el diff a la API REST de GitHub y lo trunca si es demasiado largo.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <h3>El LLM lo revisa</h3>
+        <p>Se envía a Groq (Llama/GPT-OSS, gratis) pidiendo resumen, bugs y estilo — sin inventar problemas.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">04</span>
+        <h3>Comenta en la PR</h3>
+        <p>La respuesta se publica con el <code style="font-family:var(--mono);font-size:12px;">GITHUB_TOKEN</code> nativo de Actions. Cero credenciales extra.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap" id="proof">
+  <section>
+    <div class="section-head">
+      <span class="section-tag">Evidencia, no una maqueta</span>
+      <h2>Esto es un comentario real, publicado por el bot</h2>
+      <p class="section-desc">Se abrió una PR con un módulo que tiene dos bugs intencionados. El bot los encontró él solo.</p>
+    </div>
+
+    <div class="proof-card">
+      <div class="proof-topbar">
+        <div class="proof-topbar-left">
+          <div class="traffic"><span></span><span></span><span></span></div>
+          <span class="proof-title">Sergiorivbar/CODEGUARD — Pull Request #1</span>
+        </div>
+        <a class="pr-link" href="https://github.com/Sergiorivbar/CODEGUARD/pull/1" target="_blank" rel="noopener">Ver PR original →</a>
+      </div>
+      <div class="comment">
+        <div class="comment-author">
+          <div class="comment-avatar">🤖</div>
+          <div>
+            <b>github-actions</b><span class="bot-tag">bot</span>
+          </div>
+          <span class="when">hace unos minutos</span>
+        </div>
+
+        <div class="comment-body">
+          <h4>🤖 CodeGuard AI Review</h4>
+
+          <h4>Resumen</h4>
+          <p>Se añade un nuevo módulo <code>examples/stats.py</code> que contiene dos funciones de utilidad: <code>average</code> para calcular la media de una lista de números y <code>find_max</code> para obtener el valor máximo.</p>
+
+          <h4>Posibles bugs o problemas de lógica</h4>
+          <ul>
+            <li><b>Argumento mutable por defecto</b> en <code>average(numbers=[])</code>. El mismo objeto lista se reutiliza entre llamadas, lo que puede producir resultados inesperados.</li>
+            <li><b>División por cero</b> en <code>average</code> cuando la lista está vacía (<code>len(numbers) == 0</code>).</li>
+            <li><b>Suposición de lista no vacía</b> en <code>find_max</code>: lanza <code>IndexError</code> con lista vacía.</li>
+            <li>Falta de validación de tipos en ambas funciones.</li>
+          </ul>
+
+          <h4>Sugerencias de estilo y buenas prácticas</h4>
+          <ul>
+            <li>Usar <code>numbers=None</code> y crear la lista dentro de la función.</li>
+            <li>Lanzar <code>ValueError</code> explícito ante listas vacías.</li>
+            <li>Usar <code>sum()</code> / <code>max()</code> nativos de Python en vez de bucles manuales.</li>
+            <li>Añadir docstrings y type hints.</li>
+          </ul>
+
+          <div class="comment-footer">
+            Generado automáticamente por CodeGuard usando Groq · modelo <code>openai/gpt-oss-120b</code>. Puede cometer errores, revisa siempre con criterio humano.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap" id="stack">
+  <section>
+    <div class="section-head">
+      <span class="section-tag">Stack</span>
+      <h2>Herramientas simples, deliberadamente</h2>
+      <p class="section-desc">Sin frameworks innecesarios: cada pieza está ahí porque hace falta.</p>
+    </div>
+    <div class="stack-grid">
+      <div class="stack-item"><div class="ic">🐍</div><b>Python</b><span>+ requests</span></div>
+      <div class="stack-item"><div class="ic">⚙️</div><b>GitHub Actions</b><span>orquestación CI/CD</span></div>
+      <div class="stack-item"><div class="ic">⚡</div><b>Groq API</b><span>inferencia LLM gratuita</span></div>
+      <div class="stack-item"><div class="ic">🔗</div><b>GitHub REST API</b><span>diff + comentarios</span></div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap" id="setup">
+  <section>
+    <div class="section-head">
+      <span class="section-tag">Setup</span>
+      <h2>Listo en menos de 5 minutos</h2>
+      <p class="section-desc">Sin infraestructura propia, sin servidores que mantener.</p>
+    </div>
+    <div class="setup-grid">
+      <ul class="setup-list">
+        <li>
+          <div class="setup-num">1</div>
+          <p><b>Consigue una API key gratuita</b> en console.groq.com — no requiere tarjeta de crédito.</p>
+        </li>
+        <li>
+          <div class="setup-num">2</div>
+          <p><b>Añádela como secreto</b> del repo (<code style="font-family:var(--mono);font-size:12.5px;background:rgba(110,130,150,.14);padding:1px 6px;border-radius:4px;">GROQ_API_KEY</code>) en Settings → Secrets → Actions.</p>
+        </li>
+        <li>
+          <div class="setup-num">3</div>
+          <p><b>Copia el workflow</b> a <code style="font-family:var(--mono);font-size:12.5px;background:rgba(110,130,150,.14);padding:1px 6px;border-radius:4px;">.github/workflows/</code> — usa el <code style="font-family:var(--mono);font-size:12.5px;background:rgba(110,130,150,.14);padding:1px 6px;border-radius:4px;">GITHUB_TOKEN</code> que Actions ya provee.</p>
+        </li>
+        <li>
+          <div class="setup-num">4</div>
+          <p><b>Abre una Pull Request.</b> El bot comenta solo, en segundos.</p>
+        </li>
+      </ul>
+      <div class="code-block"><span class="c1"># .github/workflows/pr-review.yml</span><br>
+<span class="c3">on</span>:<br>
+&nbsp;&nbsp;<span class="c3">pull_request</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c3">types</span>: [opened, synchronize]<br><br>
+<span class="c3">jobs</span>:<br>
+&nbsp;&nbsp;<span class="c3">review</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c3">runs-on</span>: ubuntu-latest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c3">steps</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="c3">run</span>: <span class="c4">python scripts/review_pr.py</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="c3">env</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="c2">GROQ_API_KEY</span>: <span class="c1">${{ secrets.GROQ_API_KEY }}</span></div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap">
+  <div class="cta-band">
+    <span class="section-tag">¿Te ha parecido útil?</span>
+    <h2>Míralo funcionando en tu propio repo</h2>
+    <p class="section-desc" style="margin-bottom:32px;">Todo el código está documentado y listo para copiar.</p>
+    <a class="btn btn-primary" href="https://github.com/Sergiorivbar/CODEGUARD" target="_blank" rel="noopener">Ver repositorio en GitHub →</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div>
+      <a href="#top" class="brand"><span class="brand-mark">🛡️</span> CodeGuard</a>
+      <p class="footer-note">Proyecto de portfolio — Sergio Rivera Barroso</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/Sergiorivbar/CODEGUARD" target="_blank" rel="noopener">Repositorio</a>
+      <a href="https://github.com/Sergiorivbar/CODEGUARD/pull/1" target="_blank" rel="noopener">PR de demo</a>
+      <a href="https://github.com/Sergiorivbar/CODEGUARD#readme" target="_blank" rel="noopener">Documentación</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
