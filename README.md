@@ -26,7 +26,7 @@ proveedor de inferencia gratuita).
    - Si el diff está vacío, publica un aviso y termina sin llamar al modelo.
    - Si el diff es muy largo, lo trunca antes de enviarlo (por defecto,
      12000 caracteres) para no exceder los límites del modelo.
-   - Envía el diff a la API de Groq (`llama-3.3-70b-versatile`, endpoint
+   - Envía el diff a la API de Groq (`openai/gpt-oss-120b`, endpoint
      compatible con OpenAI) pidiendo un resumen, posibles bugs y
      sugerencias de estilo.
    - Publica la respuesta como comentario en la PR usando
@@ -113,5 +113,5 @@ EOF
   dependencia externa.
 - **GitHub Actions** para la orquestación (disparo en `pull_request`).
 - **[Groq](https://groq.com)** como proveedor de inferencia gratuita,
-  vía API compatible con OpenAI (`llama-3.3-70b-versatile`).
+  vía API compatible con OpenAI (`openai/gpt-oss-120b`).
 - **API REST de GitHub** para leer el diff y publicar el comentario.
